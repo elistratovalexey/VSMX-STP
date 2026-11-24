@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.spec.bak
+.venv/
+venv/
+.pytest_cache/
+*.stp
+*.step
+!tests/data/*.stp
+src/vcmx2stp/_build_info.py

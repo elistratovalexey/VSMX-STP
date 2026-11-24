@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vcmx2stp"
+dynamic = ["version"]
+description = "Конвертер KUKA.Sim / Visual Components (.vcmx) в STEP (.stp) со структурой сборок и B-rep без треугольников"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = ["cadquery-ocp>=7.8", "numpy>=1.26"]
+
+[project.scripts]
+vcmx2stp = "vcmx2stp.cli:main"
+
+[project.gui-scripts]
+vcmx2stp-gui = "vcmx2stp.app:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "vcmx2stp._version.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+vcmx2stp = ["assets/*.ico"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "tests"]
