@@ -26,7 +26,25 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _utf8_console() -> None:
+    """Консоль Windows может быть в cp1251/cp866/cp1252 — выводим UTF-8 без падений."""
+    for stream in (sys.stdout, sys.stderr):
+        if stream is not None and hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass
+    if sys.platform == "win32":
+        try:
+            import ctypes
+
+            ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+        except Exception:
+            pass
+
+
 def main(argv: Optional[List[str]] = None) -> int:
+    _utf8_console()
     args = build_parser().parse_args(argv)
     files: List[str] = []
     for i in args.inputs:

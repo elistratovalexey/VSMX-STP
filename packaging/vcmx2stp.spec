@@ -58,7 +58,7 @@ def _dll_closure():
                 seen.add(p)
                 todo.append(p)
                 out.append((p, os.path.basename(os.path.dirname(p))))
-    print(f"[spec] DLL OpenCascade/VTK в сборке: {len(out)}")
+    print(f"[spec] OpenCascade/VTK DLLs bundled: {len(out)}")
     return out
 
 

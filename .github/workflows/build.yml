@@ -18,6 +18,10 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: utf-8
+
 jobs:
   build:
     runs-on: windows-latest
@@ -55,6 +59,7 @@ jobs:
 
       - name: Smoke test of the frozen program
         run: |
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
           python tests/make_sample.py build/sample.vcmx
           & dist/VCMX2STP/vcmx2stp-cli.exe build/sample.vcmx -o build/sample.stp
           if ($LASTEXITCODE -ne 0) { throw "vcmx2stp-cli.exe завершился с кодом $LASTEXITCODE" }
