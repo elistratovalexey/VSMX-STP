@@ -51,8 +51,8 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallDisplayName={#MyAppName}
 Compression=lzma2/max
 SolidCompression=yes
-; сжатие в отдельном 64-битном процессе — иначе 32-битному ISCC не хватает памяти
-LZMAUseSeparateProcess=x64
+; сжатие в отдельном процессе (ultra64 со словарём ~1,5 ГБ вызывал Out of memory)
+LZMAUseSeparateProcess=yes
 WizardStyle=modern
 CloseApplications=yes
 RestartApplications=yes
