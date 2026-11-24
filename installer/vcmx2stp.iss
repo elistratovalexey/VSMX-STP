@@ -49,9 +49,10 @@ OutputBaseFilename=VCMX2STP-Setup-{#MyAppVersion}
 SetupIconFile=..\src\vcmx2stp\assets\app.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallDisplayName={#MyAppName}
-Compression=lzma2/ultra64
+Compression=lzma2/max
 SolidCompression=yes
-LZMANumBlockThreads=4
+; сжатие в отдельном 64-битном процессе — иначе 32-битному ISCC не хватает памяти
+LZMAUseSeparateProcess=x64
 WizardStyle=modern
 CloseApplications=yes
 RestartApplications=yes
