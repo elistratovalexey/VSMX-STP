@@ -8,7 +8,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from . import brep
+from . import brep, smartbrep, step_compact
 from . import geometry as G
 from .model import GeoRef, Issue, Part, SceneNode, tree_signature
 
@@ -18,13 +18,17 @@ class ShapeFactory:
     """Строит и кэширует B-rep для GeoRef (один прототип на одинаковую геометрию)."""
 
     def __init__(self, archive, log: Callable[[str], None], issues: List[Issue], angle_tol: float = 0.5,
-                 keep_polylines: bool = False, errors: Optional[List[Issue]] = None):
+                 keep_polylines: bool = False, errors: Optional[List[Issue]] = None,
+                 surface_fit: bool = True, fit_tol: float = 0.1):
         self.ar = archive
         self.errors = errors if errors is not None else []
         self.log = log
         self.issues = issues
         self.angle_tol = angle_tol
         self.keep_polylines = keep_polylines
+        self.surface_fit = surface_fit
+        self.fit_tol = fit_tol
+        self.fit_stats = smartbrep.FitStats()
         self._raw: Dict[tuple, Tuple[str, object]] = {}
         self._shape: Dict[tuple, Optional[object]] = {}
         self._color: Dict[tuple, Optional[tuple]] = {}
@@ -67,6 +71,8 @@ class ShapeFactory:
         except Exception as ex:  # защитный код: одна деталь не должна ломать конвертацию
             self.log(f"Ошибка построения «{fname}» ({comp}): {ex}")
             self.errors.append(Issue(comp, fname, geo.params.get("uri", geo.kind), f"ошибка построения: {ex}"))
+        if s is not None:
+            s = _relax_tolerance(s)
         self._shape[key] = s
         return s
 
@@ -104,7 +110,16 @@ class ShapeFactory:
                     shapes.append(s)
             else:
                 if len(mesh.triangles):
-                    s = brep.mesh_to_brep(mesh.vertices, mesh.triangles, self.angle_tol, self.mesh_stats)
+                    s = None
+                    if self.surface_fit:
+                        try:
+                            s = smartbrep.mesh_to_brep_fit(mesh.vertices, mesh.triangles, self.fit_tol, self.angle_tol,
+                                                           self.mesh_stats, self.fit_stats)
+                        except Exception as ex:  # защитный код: при сбое — многогранный построитель
+                            self.log(f"Распознавание поверхностей «{fname}»: {ex}")
+                            s = None
+                    if s is None:
+                        s = brep.mesh_to_brep(mesh.vertices, mesh.triangles, self.angle_tol, self.mesh_stats)
                     if s is not None:
                         shapes.append(s)
                 if self.keep_polylines and mesh.polylines:
@@ -333,7 +348,8 @@ class StepWriter:
             st = w.Write(tmp)
             if st != IFSelect_RetDone:
                 raise RuntimeError("Ошибка записи STEP")
-            _compact_step(tmp)
+            if not os.environ.get("VCMX2STP_NO_COMPACT"):
+                step_compact.compact_file(tmp)
             os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
             shutil.move(tmp, path)
             try:
@@ -362,25 +378,11 @@ def _push_down_nonrigid(node: SceneNode):
         _push_down_nonrigid(ch)
 
 
-def _compact_step(path: str):
-    """Уменьшение размера без потери данных: лишние нули в числах, пробелы и отступы.
-
-    Строковые литералы ('...') не изменяются."""
-    import re
-
-    with open(path, "rb") as f:
-        data = f.read()
-    head, sep, body = data.partition(b"DATA;")
-    if not sep:
-        return
-    num = re.compile(rb"(\d\.\d*?)0+(?=[,)E])")
-    parts = re.split(rb"('(?:[^']|'')*')", body)
-    for i in range(0, len(parts), 2):          # чётные элементы — вне строк
-        t = parts[i]
-        t = num.sub(rb"\1", t)
-        t = re.sub(rb"[ \t]+\n", b"\n", t)
-        t = re.sub(rb"\n(#\d+) = ", rb"\n\1=", t)
-        t = re.sub(rb"\n[ \t]+", b"\n", t)
-        parts[i] = t
-    with open(path, "wb") as f:
-        f.write(head + sep + b"".join(parts))
+def _relax_tolerance(shape, tmin: float = 1e-4):
+    """Минимальный допуск 1e-4 мм: запись координат с точностью 1e-5 мм не нарушает корректность."""
+    try:
+        from OCP.ShapeFix import ShapeFix_ShapeTolerance
+        ShapeFix_ShapeTolerance().LimitTolerance(shape, tmin, 1e6)
+    except Exception:  # pragma: no cover
+        pass
+    return shape

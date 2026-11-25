@@ -122,6 +122,13 @@ class App(tk.Tk):
         ttk.Checkbutton(pf, text="Цвета", variable=self.var_colors).grid(row=0, column=2, sticky="w", padx=6)
         ttk.Label(pf, text="Допуск компланарности, °:").grid(row=0, column=3, sticky="e", padx=6)
         ttk.Spinbox(pf, from_=0.01, to=5.0, increment=0.1, width=6, textvariable=self.var_tol).grid(row=0, column=4)
+        self.var_fit = tk.BooleanVar(value=getattr(self.settings, "surface_fit", True))
+        self.var_fit_tol = tk.DoubleVar(value=getattr(self.settings, "fit_tol", 0.1))
+        ttk.Checkbutton(pf, text="Распознавать поверхности: цилиндры, конусы, сферы, торы, B-сплайны (меньше размер)",
+                        variable=self.var_fit).grid(row=1, column=0, columnspan=3, sticky="w", padx=6)
+        ttk.Label(pf, text="Допуск распознавания, мм:").grid(row=1, column=3, sticky="e", padx=6)
+        ttk.Spinbox(pf, from_=0.005, to=1.0, increment=0.01, width=6,
+                    textvariable=self.var_fit_tol).grid(row=1, column=4)
 
         # --- запуск
         rf = ttk.Frame(top)
@@ -204,6 +211,11 @@ class App(tk.Tk):
             s.angle_tol = float(self.var_tol.get())
         except (tk.TclError, ValueError):
             s.angle_tol = 0.5
+        s.surface_fit = bool(self.var_fit.get())
+        try:
+            s.fit_tol = max(0.001, float(self.var_fit_tol.get()))
+        except (tk.TclError, ValueError):
+            s.fit_tol = 0.1
         s.output_dir = self.var_out.get().strip()
         cfg.save(s)
 
@@ -250,7 +262,8 @@ class App(tk.Tk):
         self._save()
         s = self.settings
         opt = ConvertOptions(search_dirs=s.search_dirs, include_hidden=s.include_hidden,
-                             include_envelopes=s.include_envelopes, colors=s.colors, angle_tol=s.angle_tol)
+                             include_envelopes=s.include_envelopes, colors=s.colors, angle_tol=s.angle_tol,
+                             surface_fit=s.surface_fit, fit_tol=s.fit_tol)
         outdir = s.output_dir
         self.busy = True
         self.btn.state(["disabled"])

@@ -20,6 +20,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--hidden", action="store_true", help="включать скрытые элементы (Visible = 0)")
     p.add_argument("--envelopes", action="store_true", help="включать рабочие зоны роботов")
     p.add_argument("--no-colors", action="store_true", help="не записывать цвета (немного меньше размер)")
+    p.add_argument("--no-fit", action="store_true",
+                   help="не распознавать поверхности (как в 1.0: каждая криволинейная фасета — отдельная плоская грань)")
+    p.add_argument("--fit-tol", type=float, default=0.1, help="допуск распознавания поверхностей, мм (по умолчанию 0.1)")
     p.add_argument("--angle-tol", type=float, default=0.5, help="допуск объединения компланарных треугольников, градусы")
     p.add_argument("--strict", action="store_true", help="код возврата 2, если в файле не хватает встроенных моделей")
     p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -50,7 +53,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     for i in args.inputs:
         files.extend(sorted(glob.glob(i)) or [i])
     opt = ConvertOptions(search_dirs=args.search_dir, include_hidden=args.hidden, include_envelopes=args.envelopes,
-                         colors=not args.no_colors, angle_tol=args.angle_tol)
+                         colors=not args.no_colors, angle_tol=args.angle_tol,
+                         surface_fit=not args.no_fit, fit_tol=args.fit_tol)
     code = 0
     for f in files:
         if not os.path.isfile(f):

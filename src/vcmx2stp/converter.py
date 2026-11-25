@@ -21,6 +21,8 @@ class ConvertOptions:
     angle_tol: float = 0.5                                   # допуск компланарности, градусы
     keep_polylines: bool = False
     schema: str = "AP214IS"
+    surface_fit: bool = True        # распознавание плоскостей/цилиндров/конусов/сфер/торов — меньше размер
+    fit_tol: float = 0.1            # допуск распознавания, мм
 
 
 @dataclass
@@ -128,7 +130,7 @@ def convert(src: str, dst: Optional[str] = None, options: Optional[ConvertOption
         log(f"Компонентов: {sb.stats['components']}, звеньев: {sb.stats['links']}, деталей: {sb.stats['parts']}")
         issues: List[Issue] = []
         errors: List[Issue] = []
-        factory = ShapeFactory(ar, log, issues, opt.angle_tol, opt.keep_polylines, errors)
+        factory = ShapeFactory(ar, log, issues, opt.angle_tol, opt.keep_polylines, errors, opt.surface_fit, opt.fit_tol)
         writer = StepWriter(factory, log, opt.colors, opt.schema)
         log("Построение B-rep и структуры сборок...")
         writer.build(root)

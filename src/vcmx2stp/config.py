@@ -24,6 +24,8 @@ class Settings:
     include_envelopes: bool = False
     colors: bool = True
     angle_tol: float = 0.5
+    surface_fit: bool = True
+    fit_tol: float = 0.1
     last_dir: str = ""
     output_dir: str = ""
 

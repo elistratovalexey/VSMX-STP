@@ -540,9 +540,8 @@ def _signed_volume(v: np.ndarray, f: np.ndarray) -> float:
     return float(np.einsum("ij,ij->i", p0, np.cross(p1, p2)).sum() / 6.0)
 
 
-def mesh_to_brep(vertices: np.ndarray, triangles: np.ndarray, angle_tol_deg: float = 0.5,
-                 stats: Optional[MeshStats] = None, log=None, faces_only: bool = False) -> Optional[TopoDS_Shape]:
-    """Преобразует треугольную сетку в B-rep из плоских многоугольных граней."""
+def mesh_topology(vertices: np.ndarray, triangles: np.ndarray, angle_tol_deg: float = 0.5):
+    """Сварка, очистка, ориентация, полурёбра и плоские области сетки (общая часть построителей)."""
     if vertices is None or len(triangles) == 0:
         return None
     v = np.asarray(vertices, float)
@@ -553,11 +552,8 @@ def mesh_to_brep(vertices: np.ndarray, triangles: np.ndarray, angle_tol_deg: flo
     f, _ = _clean_tris(v, f, None)
     if len(f) == 0:
         return None
-    if stats:
-        stats.triangles_in += len(f)
     nv = len(v)
     f, comps, closed = _orient_consistently(f, nv)
-
     p0, p1, p2 = v[f[:, 0]], v[f[:, 1]], v[f[:, 2]]
     cr = np.cross(p1 - p0, p2 - p0)
     area2 = np.linalg.norm(cr, axis=1)
@@ -611,6 +607,26 @@ def mesh_to_brep(vertices: np.ndarray, triangles: np.ndarray, angle_tol_deg: flo
                 stack.append(nb)
         reg_normal.append(n0)
         reg_point.append(p0[s])
+
+    return dict(v=v, f=f, nv=nv, comps=comps, closed=closed, normals=normals, area2=area2, diag=diag,
+                dist_tol=dist_tol, geom_tol=geom_tol, ha=ha, hb=hb, twin=twin, twin_tri=twin_tri,
+                region=region, reg_normal=reg_normal, reg_point=reg_point, m=m)
+
+
+def mesh_to_brep(vertices: np.ndarray, triangles: np.ndarray, angle_tol_deg: float = 0.5,
+                 stats: Optional[MeshStats] = None, log=None, faces_only: bool = False) -> Optional[TopoDS_Shape]:
+    """Преобразует треугольную сетку в B-rep из плоских многоугольных граней."""
+    T = mesh_topology(vertices, triangles, angle_tol_deg)
+    if T is None:
+        return None
+    v, f, nv, comps, closed = T["v"], T["f"], T["nv"], T["comps"], T["closed"]
+    normals, area2, diag = T["normals"], T["area2"], T["diag"]
+    dist_tol, geom_tol, ha, hb = T["dist_tol"], T["geom_tol"], T["ha"], T["hb"]
+    twin, twin_tri, region, reg_normal, reg_point, m = (T["twin"], T["twin_tri"], T["region"], T["reg_normal"],
+                                                         T["reg_point"], T["m"])
+    p0 = v[f[:, 0]]
+    if stats:
+        stats.triangles_in += len(f)
 
     # граничные полурёбра регионов
     he_region = np.repeat(region, 3)
